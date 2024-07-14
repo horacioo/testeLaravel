@@ -19,4 +19,5 @@ Route::get('/', function () {
 });
 
 
-Route::get('/payment', [pagamentoController::class, 'index']);
+Route::get('/payment', [pagamentoController::class, 'index'])->name('pagamento');
+Route::post('/obrigado', [pagamentoController::class, 'conclusao'])->name('obrigado');

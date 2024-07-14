@@ -12,13 +12,28 @@
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        #dadosCartaoDeCreditoForm {
+            border: 1px solid rgb(0, 33, 132);
+            background-color: white;
+            padding: 2vw;
+            border-radius: 0.7vw;
+            margin-bottom:2vw;
+        }
+    </style>
 </head>
 
 <body>
     <div class="container mt-5">
         <h1 class="text-center">Pagamento</h1>
-        <form id="payment-form" class="needs-validation" novalidate>
 
+
+
+
+
+
+        <form method="post" id="payment-form" action={{ route('obrigado') }} class="needs-validation">
+            @csrf
             <div class="form-group">
                 <label for="billingType">Forma de Pagamento:</label>
                 <select class="form-control" id="billingType" name="billingType" required>
@@ -32,7 +47,7 @@
 
             <div class="form-group">
                 <label for="value">Valor:</label>
-                <input type="text" class="form-control" id="value" name="value" value="215.00" required>
+                <input type="text" class="form-control" id="value" name="value" value="R$215,00" required>
                 <div class="invalid-feedback">Por favor, insira o valor.</div>
             </div>
 
@@ -43,8 +58,72 @@
                 <div class="invalid-feedback">Por favor, insira a descrição.</div>
             </div>
 
+
+
+            <!------------------------------------------------------------------->
+            <div id="dadosCartaoDeCreditoForm">
+     
+              @if(session('text')!= null) <h2 style="color:red">{{session('text')}}</h2> @endif
+
+                <h2>Dados do Cartão de Crédito</h2>
+                <div class="form-group">
+                    <label for="description">NomeDoTituar:</label>
+                    <input type="text" class="form-control" id="description" name="cartaoTit" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Numero do Cartão:</label>
+                    <input type="text" class="form-control" id="description" name="cartaoNum" required>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="description">Expira no mês de :</label>
+                    <select class="form-control" name="ExpireMonth" required>
+                        <option value="01">01</option>
+                        <option value="02">02</option>
+                        <option value="03">03</option>
+                        <option value="04">04</option>
+                        <option value="05">05</option>
+                        <option value="06">06</option>
+                        <option value="07">07</option>
+                        <option value="08">08</option>
+                        <option value="09">09</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                    </select>
+                </div>
+
+
+
+                <div class="form-group">
+                    <label for="description">Ano de Expiração:</label>
+                    <select class="form-control" name="ExpireYear" required>
+                        {{ $currentYear = date('y') }}
+                        @for ($i = -19; $i < 20; $i++)
+                            <option value="{{ $currentYear + $i }}">{{ $currentYear + $i }}</option>
+                        @endfor
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Código De Segurança:</label>
+                    <input type="text" class="form-control" id="description" name="cartaoCcv" required>
+                </div>
+            </div>
+            <!------------------------------------------------------------------->
+
+
+
+
+
             <button type="submit" class="btn btn-primary btn-block">Pagar</button>
         </form>
+
+
+
+
+
     </div>
 
     <div id="pix" style="display: none;">
@@ -56,60 +135,32 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
+
+
+
+    <!---<script src="{{ asset('js/app.js') }}"></script>-->
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"
+        integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var url = "{{ $url }}";
 
-            document.getElementById('payment-form').addEventListener('submit', function(event) {
-                event.preventDefault();
-
-                const formData = new FormData(this);
+        jQuery("document").ready(function() {
+               @if(session('text')=== null) jQuery('#dadosCartaoDeCreditoForm').hide(); @endif
+        });
 
 
-                fetch(url, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.text()) // Alterado para text() para depuração
-                    .then(responseText => {
-                        console.log('Resposta bruta da API:', responseText);
+        $('#billingType').change(function() {
+            if ($(this).val() === 'CREDIT_CARD') {
+                jQuery('#dadosCartaoDeCreditoForm').show();
+            }
+        });
 
-                        // Tente analisar o JSON manualmente
-                        try {
-
-                            const data = JSON.parse(responseText);
-                            alert('Pagamento enviado com sucesso!' + data['tipo']);
-                            var imgElement = document.getElementById('image');
-                            imgElement.src = "data:image/png;base64," + data['qrCode'];
-                            imgElement.style.display = 'block'; // Exibe a imagem
-                            var divPix = document.getElementById('pix');
-                            divPix.style.display = 'block';
-
-
-                        } catch (error) {
-                            console.error('Erro ao analisar JSON:', error);
-                            alert(
-                                'Erro ao analisar a resposta da API. Verifique o console para mais detalhes.'
-                                );
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao enviar pagamento:', error);
-                        alert('Erro ao enviar pagamento. Verifique o console para mais detalhes.');
-                    });
-
-
-
-
-
-
-
-
-
-
-            });
+        $('#billingType').change(function() {
+            if ($(this).val() != 'CREDIT_CARD') {
+                jQuery('#dadosCartaoDeCreditoForm').hide();
+            }
         });
     </script>
+
 </body>
 
 </html>
