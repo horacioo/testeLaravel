@@ -18,7 +18,7 @@
             background-color: white;
             padding: 2vw;
             border-radius: 0.7vw;
-            margin-bottom:2vw;
+            margin-bottom: 2vw;
         }
     </style>
 </head>
@@ -62,17 +62,19 @@
 
             <!------------------------------------------------------------------->
             <div id="dadosCartaoDeCreditoForm">
-     
-              @if(session('text')!= null) <h2 style="color:red">{{session('text')}}</h2> @endif
+
+                @if (session('text') != null)
+                    <h2 style="color:red">{{ session('text') }}</h2>
+                @endif
 
                 <h2>Dados do Cartão de Crédito</h2>
                 <div class="form-group">
                     <label for="description">NomeDoTituar:</label>
-                    <input type="text" class="form-control" id="description" name="cartaoTit" required>
+                    <input type="text" class="form-control" id="titular" name="cartaoTit" value='0' required>
                 </div>
                 <div class="form-group">
                     <label for="description">Numero do Cartão:</label>
-                    <input type="text" class="form-control" id="description" name="cartaoNum" required>
+                    <input type="text" class="form-control" id="numero" value="0" name="cartaoNum" required>
                 </div>
 
 
@@ -99,7 +101,7 @@
                 <div class="form-group">
                     <label for="description">Ano de Expiração:</label>
                     <select class="form-control" name="ExpireYear" required>
-                        {{ $currentYear = date('y') }}
+                        {{ $currentYear = date('Y') }}
                         @for ($i = -19; $i < 20; $i++)
                             <option value="{{ $currentYear + $i }}">{{ $currentYear + $i }}</option>
                         @endfor
@@ -108,8 +110,30 @@
 
                 <div class="form-group">
                     <label for="description">Código De Segurança:</label>
-                    <input type="text" class="form-control" id="description" name="cartaoCcv" required>
+                    <input type="text" class="form-control" value="0" id="CodigoSeguranca" name="cartaoCcv"
+                        required>
                 </div>
+
+
+
+                <div class="form-group">
+                    <label for="description">Parcelas :</label>
+                    <select class="form-control" name="parcelas">
+                        <option value="01">01</option>
+                        <option value="02">02</option>
+                        <option value="03">03</option>
+                        <option value="04">04</option>
+                        <option value="05">05</option>
+                        <option value="06">06</option>
+                        <option value="07">07</option>
+                        <option value="08">08</option>
+                        <option value="09">09</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                    </select>
+                </div>
+
             </div>
             <!------------------------------------------------------------------->
 
@@ -142,21 +166,28 @@
     <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"
         integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
     <script>
-
         jQuery("document").ready(function() {
-               @if(session('text')=== null) jQuery('#dadosCartaoDeCreditoForm').hide(); @endif
+            @if (session('text') === null)
+                jQuery('#dadosCartaoDeCreditoForm').hide();
+            @endif
         });
 
 
         $('#billingType').change(function() {
             if ($(this).val() === 'CREDIT_CARD') {
                 jQuery('#dadosCartaoDeCreditoForm').show();
+                jQuery('#CodigoSeguranca').val('');
+                jQuery('#titular').val('');
+                jQuery('#numero').val('');
             }
         });
 
         $('#billingType').change(function() {
             if ($(this).val() != 'CREDIT_CARD') {
                 jQuery('#dadosCartaoDeCreditoForm').hide();
+                jQuery('#CodigoSeguranca').val('0');
+                jQuery('#titular').val('0');
+                jQuery('#numero').val('0');
             }
         });
     </script>

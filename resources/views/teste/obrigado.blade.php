@@ -32,14 +32,11 @@
                     </a>
 
                 @elseif($tipo == 'cartao_credito')
-                    <a href="{{ $link }}" class="btn btn-primary" target='_blank'>
-                        Clique aqui e pague com seu cartão de crédito
-                    </a>
+                   {{ $text }}
                 @endif
 
             </div>
             <div class="card-body">
-                <p class="card-text">Sua submissão foi recebida com sucesso.</p>
                 <a href="{{ route('pagamento') }}" class="btn btn-primary">Voltar ao Início</a>
             </div>
         </div>

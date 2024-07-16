@@ -17,6 +17,9 @@ class pagamentoController extends Controller
     private $valor;
     private $avaliacaoValor;
     private $CartaoDeCredito;
+    private $parcelas;
+    private $minValue = 5.00;
+    private $maxParcelas = 12;
 
 
     public function index()
@@ -33,6 +36,7 @@ class pagamentoController extends Controller
     public function conclusao(Request $request)
     {
         $dados = $request->all();
+
 
         $this->CartaoDeCredito =
             array(
@@ -115,10 +119,9 @@ class pagamentoController extends Controller
         $data['customer'] = $this->cliente;
         $data['value'] = $this->TrataValor($dados['value']);
         $data['description'] = "api de pagamento";
-
+        $this->parcelas = $dados['parcelas'];
         $this->TrataValor($data['value']);
 
-        // Define manualmente os parâmetros obrigatórios do pagamento
         $dataToSend = [
             'customer' => 'cus_000006095618',
             'billingType' => 'BOLETO',
@@ -183,6 +186,9 @@ class pagamentoController extends Controller
 
 
 
+    /***************************************************************/
+    /***************************************************************/
+    /***************************************************************/
     public function CREDIT_CARD()
     {
         $apiKey = $this->minhaChave;
@@ -194,9 +200,11 @@ class pagamentoController extends Controller
                 "holderName" => $this->CartaoDeCredito['holderName'],
                 "expiryMonth" => intval($this->CartaoDeCredito['expiryMonth']),
                 "expiryYear" => intval($this->CartaoDeCredito['expiryYear']),
-                "ccv" => $this->CartaoDeCredito['ccv']
-            )
+                "ccv" => $this->CartaoDeCredito['ccv'],
+            ), 'customer' => $this->cliente
         );
+
+
         $headers = array(
             'Content-Type: application/json',
             'access_token: ' . $apiKey,
@@ -216,22 +224,98 @@ class pagamentoController extends Controller
         }
         curl_close($ch);
 
+
+
+
         $responseData = json_decode($response, true); // Decodifica a resposta
 
+        if (isset($responseData['creditCardToken'])) {
+            $this->avaliacaoValor = 1;
+            $this->retornoDadosProcessados = [
+                "tipo" => "cartao_credito",
+                "codigoExtenso" => $responseData['creditCardToken'],
+                "imagem" => "#",
+                "linkBoleto" => $this->response['invoiceUrl']
+            ];
 
-        $this->avaliacaoValor=0;
-        $this->retornoDadosProcessados = [
-            "tipo" => "cartao_credito",
-            "codigoExtenso" => $responseData['errors'][0]['description'],
-            "imagem" => "#",
-            "linkBoleto" => $this->response['invoiceUrl']
-
-        ];
+            $data['creditCard']['token'] = $responseData['creditCardToken'];
+            $this->retornoDadosProcessados['creditCard']['token'] = $responseData['creditCardToken'];
+            $this->ExecutaPagamentoComCartao();
+        } else {
+            $this->avaliacaoValor = 0;
+            $this->retornoDadosProcessados = [
+                "tipo" => "cartao_credito",
+                "codigoExtenso" => $responseData['errors'][0]['description'],
+                "imagem" => "#",
+                "linkBoleto" => $this->response['invoiceUrl']
+            ];
+        }
     }
 
+    /***************************************************************/
+    /***************************************************************/
+    /***************************************************************/
 
 
 
+
+    /***************************************************************/
+    /***************************************************************/
+    /***************************************************************/
+    private function ExecutaPagamentoComCartao()
+    {
+
+        $valorDaParcela = $this->CalculoParcela();
+
+        $data_pgto = date('Y-m-d', strtotime('+3 days'));
+        $curl = curl_init();
+        $data = [
+            "billingType" => "CREDIT_CARD",
+            "customer" => $this->cliente,
+            "value" => $this->valor,
+            "installmentCount" => 3,
+            "dueDate" => $data_pgto,
+            "installmentValue" => $this->retornoDadosProcessados['ValorDeCadaParcelas'],
+            "creditCardToken" => $this->retornoDadosProcessados['creditCard']['token']//$dados['token']
+        ];
+
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => "https://sandbox.asaas.com/api/v3/payments/",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => "POST",
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_HTTPHEADER => [
+                "accept: application/json",
+                "access_token: " . $this->minhaChave . "",
+                "content-type: application/json",
+                "User-Agent: NomeDoSeuApp/1.0"
+            ],
+        ]);
+
+
+       
+
+        $response = curl_exec($curl);
+
+        if (curl_errno($curl)) {
+            echo 'Error:' . curl_error($curl);
+        } else {
+            $data = json_decode($response, true);
+            $this->retornoDadosProcessados = [
+                "tipo" => "cartao_credito",
+                "codigoExtenso" => "Seu Pagamento foi Realizado com sucesso",
+                "imagem" => "#",
+                "linkBoleto" => "#"
+            ];
+        }
+
+        curl_close($curl);
+    }
+
+    /***************************************************************/
+    /***************************************************************/
+    /***************************************************************/
 
 
 
@@ -338,8 +422,6 @@ class pagamentoController extends Controller
     {
         return $id . str_pad(strlen($valor), 2, '0', STR_PAD_LEFT) . $valor;
     }
-
-
     function calculaCRC16($dados)
     {
         $resultado = 0xFFFF;
@@ -382,4 +464,87 @@ class pagamentoController extends Controller
         $resultado .= $this->calculaCRC16($resultado); // Adiciona o CRC16 ao final
         return $resultado;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private function CalculoParcela()
+    {
+        $qtdParcelas = (float) $this->parcelas;
+        $valor = (float) $this->valor;
+        $valorParcela = $valor / $qtdParcelas;
+    
+        // Garantir que o valor da parcela seja pelo menos 5.00
+        if ($valorParcela < 5.00) {    $valorParcela = 5.00;  }
+    
+        $novaQtdParcelas = floor($valor / $valorParcela);
+        $valorFinalParcela = $valor / $novaQtdParcelas;
+        $r = $valorFinalParcela / floor($novaQtdParcelas); 
+    
+        /*
+        echo "parcela escolhida originalmente:".$this->parcelas;
+        echo "<hr>valor: ".$this->valor;
+        echo "<hr>Nova quantidade de parcelas: " . $novaQtdParcelas; 
+        echo "<hr>Valor final da parcela: " . $valorFinalParcela;
+        echo "<hr>Qtd de parcelas original: " . $this->parcelas;
+        echo "<hr>Valor do produto: " . $this->valor;
+        */
+
+        $this->retornoDadosProcessados['parcelas']=$novaQtdParcelas;
+        $this->retornoDadosProcessados['ValorDeCadaParcelas']=round($valorFinalParcela,2);
+    }
+    
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
